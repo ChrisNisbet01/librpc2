@@ -19,9 +19,11 @@ add_library(rpc2 STATIC
 )
 
 target_include_directories(rpc2
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/rpc2>
-        $<INSTALL_INTERFACE:include/rpc2>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(rpc2
