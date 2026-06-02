@@ -12,33 +12,56 @@ typedef struct framing_content_length_st
     size_t body_offset;
 } framing_content_length_st;
 
-static frame_decode_result_t
-process_header_input(framing_content_length_st * fl, char * buf, size_t buf_len)
-{
-    char * content_len_str = strstr(buf, "Content-Length: ");
+#define MAX_HEADER_SIZE 8192
+#define MAX_BODY_SIZE 1048576
 
-    if (content_len_str == NULL)
+static frame_decode_result_t
+process_header_input(framing_st * f, char * buf, size_t buf_len)
+{
+    framing_content_length_st * fl = (framing_content_length_st *)f;
+
+    // 1. Boundary check for headers
+    if (buf_len > MAX_HEADER_SIZE)
     {
-        if (strstr(buf, "\r\n\r\n"))
+        return FRAME_ERROR;
+    }
+
+    // 2. Explicitly look for the end of the header
+    char * header_end = strstr(buf, "\r\n\r\n");
+    if (header_end == NULL)
+    {
+        // If we hit max size without finding the delimiter, reject the connection
+        if (buf_len >= MAX_HEADER_SIZE)
         {
-            fprintf(stderr, "[FRAME] Error: missing Content-Length header\n");
             return FRAME_ERROR;
         }
         return FRAME_NEED_MORE;
     }
 
-    if (sscanf(content_len_str, "Content-Length: %d", &fl->content_length) != 1 || fl->content_length < 0)
+    // 3. Search for the key within the identified header segment
+    static char const cl_key[] = "Content-Length: ";
+    char * cl_ptr;
+
+    for (cl_ptr = strstr(buf, cl_key); cl_ptr != NULL && cl_ptr != buf && cl_ptr[-1] != '\n';
+         cl_ptr = strstr(cl_ptr, cl_key))
     {
-        fprintf(stderr, "[FRAME] Error: invalid Content-Length\n");
+        cl_ptr += strlen(cl_key);
+    }
+    if (cl_ptr == NULL || cl_ptr >= header_end)
+    {
         return FRAME_ERROR;
     }
 
-    char * header_end = strstr(buf, "\r\n\r\n");
-    if (header_end == NULL)
+    // 4. Safe parsing using strtol
+    char * endptr;
+    long val = strtol(cl_ptr + strlen(cl_key), &endptr, 10);
+
+    if (val < 0 || val > MAX_BODY_SIZE)
     {
-        return FRAME_NEED_MORE;
+        return FRAME_ERROR;
     }
 
+    fl->content_length = (int)val;
     fl->body_offset = (size_t)(header_end - buf) + 4;
     fl->in_header = false;
     fprintf(
@@ -77,7 +100,7 @@ content_length_decode(framing_st * f, char * buf, size_t buf_len, size_t * msg_o
 
     if (fl->in_header)
     {
-        frame_decode_result_t r = process_header_input(fl, buf, buf_len);
+        frame_decode_result_t r = process_header_input(f, buf, buf_len);
 
         if (r != FRAME_DECODED)
         {
