@@ -275,8 +275,6 @@ static void stdin_cb(struct uloop_fd *u, unsigned int events) {
     return;
   }
 
-  fprintf(stderr, "[LSP] read %zu bytes from stdin\n", (size_t)n);
-
   if (!append_to_buffer(ctx, tmp, (size_t)n)) {
     uloop_end();
     return;
