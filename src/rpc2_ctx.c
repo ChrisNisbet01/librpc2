@@ -586,6 +586,23 @@ rpc_ctx_send_error(struct rpc_ctx * ctx, struct json_object * id, int code, char
     json_object_put(msg);
 }
 
+void
+rpc_notify(struct rpc_ctx * ctx, char const * method, struct json_object * params)
+{
+    struct json_object * msg = json_object_new_object();
+
+    json_object_object_add(msg, "jsonrpc", json_object_new_string("2.0"));
+    json_object_object_add(msg, "method", json_object_new_string(method));
+
+    if (params)
+    {
+        json_object_object_add(msg, "params", json_object_get(params));
+    }
+
+    rpc_ctx_send_json(ctx, msg);
+    json_object_put(msg);
+}
+
 /* ── Process execution (internal) ───────────────────────────────────────── */
 
 void

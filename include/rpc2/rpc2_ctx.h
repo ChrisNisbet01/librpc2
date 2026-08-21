@@ -1,5 +1,6 @@
 #pragma once
 
+#include <json-c/json.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -32,3 +33,5 @@ void rpc_ctx_close_stdin(struct rpc_ctx * ctx);
 
 void rpc_ctx_run(struct rpc_ctx * ctx);
 void rpc_ctx_stop(struct rpc_ctx * ctx);
+
+void rpc_notify(struct rpc_ctx * ctx, char const * method, struct json_object * params);
